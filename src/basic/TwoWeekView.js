@@ -5,11 +5,12 @@
 setDefaults({
 	fixedWeekCount: true,
 	titleFormat: {
-    	twoweeks: "ll",
+		twoweeks: "ll"
 	},
 	columnFormat: {
-		twoweeks: 'ddd',
-	}
+		twoweeks: 'ddd'
+	},
+	twoWeekNavJump: 1
 });
 
 fcViews.twoweeks = TwoWeeksView; // register the view
@@ -26,7 +27,7 @@ $.extend(TwoWeeksView.prototype, {
 
 
 	incrementDate: function(date, delta) {
-		return date.clone().stripTime().add(delta*2, 'weeks').startOf('week');
+		return date.clone().stripTime().add(delta*this.opt('twoWeekNavJump'), 'weeks').startOf('week');
 	},
 
 
