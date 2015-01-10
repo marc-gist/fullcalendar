@@ -6,6 +6,7 @@ var View = fc.View = Class.extend({
 
 	type: null, // subclass' view name (string)
 	name: null, // deprecated. use `type` instead
+    title: null,
 
 	calendar: null, // owner Calendar object
 	options: null, // view-specific options
@@ -60,7 +61,7 @@ var View = fc.View = Class.extend({
 
 	// A good place for subclasses to initialize member variables
 	initialize: function() {
-		// subclasses can implement
+
 	},
 
 
@@ -222,6 +223,13 @@ var View = fc.View = Class.extend({
 		this.render();
 		this.updateSize();
 		this.initializeScroll();
+
+        this.title = this.formatRange(
+			{ start: this.intervalStart, end: this.intervalEnd },
+			this.opt('titleFormat') || this.computeTitleFormat(),
+			this.opt('titleRangeSeparator')
+		);
+
 		this.trigger('viewRender', this, this, this.el);
 
 		// attach handlers to document. do it here to allow for destroy/rerender
