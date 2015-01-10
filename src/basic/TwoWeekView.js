@@ -1,4 +1,6 @@
+/* OBSOLETE - for version 2.2.3 or less
 
+ */
 /* A month view with 2 weeks and day cells running in rows (one-per-week) and columns
 ----------------------------------------------------------------------------------------------------------------------*/
 
