@@ -11,17 +11,28 @@ setDefaults({
 //};
 
 var TwoWeeks = fcViews.twoweeks = BasicView.extend({
-    // Computes the new date when the user hits the next button, given the current date
-    computeNextDate: function(date) {
-        var out;
+    // Computes the new date when the user hits the prev button, given the current date
+	computePrevDate: function(date) {
         var navJump = this.opt('twoWeekNavJump');
         if ( navJump ) {
-            out = date.clone().stripTime().add(this.opt('twoWeekNavJump'), 'weeks').startOf('week');
+            return date.clone().startOf('week').subtract(navJump, 'weeks');
         } else {
-            out = date.clone().startOf(this.intervalUnit).add(this.intervalDuration);
+            return this.skipHiddenDays(
+                date.clone().startOf(this.intervalUnit).subtract(this.intervalDuration), -1
+            );
         }
+	},
 
-        return this.skipHiddenDays(out);
+    // Computes the new date when the user hits the next button, given the current date
+    computeNextDate: function(date) {
+        var navJump = this.opt('twoWeekNavJump');
+        if ( navJump ) {
+            return date.clone().startOf('week').add(navJump, 'weeks');
+        } else {
+            return this.skipHiddenDays(
+			    date.clone().startOf(this.intervalUnit).add(this.intervalDuration)
+		    );
+        }
     }
 });
 TwoWeeks.duration = { 'weeks': 2 };
