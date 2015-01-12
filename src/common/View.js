@@ -6,7 +6,7 @@ var View = fc.View = Class.extend({
 
 	type: null, // subclass' view name (string)
 	name: null, // deprecated. use `type` instead
-    title: null,
+	title: null, // the text that will be displayed in the header's title
 
 	calendar: null, // owner Calendar object
 	options: null, // view-specific options
@@ -61,7 +61,7 @@ var View = fc.View = Class.extend({
 
 	// A good place for subclasses to initialize member variables
 	initialize: function() {
-
+		// subclasses can implement
 	},
 
 
@@ -155,7 +155,7 @@ var View = fc.View = Class.extend({
 
 	// Computes the new date when the user hits the prev button, given the current date
 	computePrevDate: function(date) {
-		return this.skipHiddenDays(
+		return this.massageCurrentDate(
 			date.clone().startOf(this.intervalUnit).subtract(this.intervalDuration), -1
 		);
 	},
@@ -163,14 +163,35 @@ var View = fc.View = Class.extend({
 
 	// Computes the new date when the user hits the next button, given the current date
 	computeNextDate: function(date) {
-		return this.skipHiddenDays(
+		return this.massageCurrentDate(
 			date.clone().startOf(this.intervalUnit).add(this.intervalDuration)
 		);
 	},
 
 
+	// Given an arbitrarily calculated current date of the calendar, returns a date that is ensured to be completely
+	// visible. `direction` is optional and indicates which direction the current date was being
+	// incremented or decremented (1 or -1).
+	massageCurrentDate: function(date, direction) {
+		if (this.intervalDuration <= moment.duration({ days: 1 })) { // if the view displays a single day or smaller
+			if (this.isHiddenDay(date)) {
+				date = this.skipHiddenDays(date, direction);
+				date.startOf('day');
+			}
+		}
+
+		return date;
+	},
+
+
 	/* Title and Date Formatting
 	------------------------------------------------------------------------------------------------------------------*/
+
+
+	// Sets the view's title property to the most updated computed value
+	updateTitle: function() {
+		this.title = this.computeTitle();
+	},
 
 
 	// Computes what the title at the top of the calendar should be for this view
@@ -223,13 +244,6 @@ var View = fc.View = Class.extend({
 		this.render();
 		this.updateSize();
 		this.initializeScroll();
-
-        this.title = this.formatRange(
-			{ start: this.intervalStart, end: this.intervalEnd },
-			this.opt('titleFormat') || this.computeTitleFormat(),
-			this.opt('titleRangeSeparator')
-		);
-
 		this.trigger('viewRender', this, this, this.el);
 
 		// attach handlers to document. do it here to allow for destroy/rerender
