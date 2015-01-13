@@ -111,6 +111,7 @@ var View = fc.View = Class.extend({
 	// Expects all values to be normalized (like what computeRange does).
 	setRange: function(range) {
 		$.extend(this, range);
+		this.updateTitle();
 	},
 
 
@@ -124,7 +125,7 @@ var View = fc.View = Class.extend({
 		var start, end;
 
 		// normalize the range's time-ambiguity
-		if (computeIntervalAs('days', intervalDuration)) { // whole-days?
+		if (/year|month|week|day/.test(intervalUnit)) { // whole-days?
 			intervalStart.stripTime();
 			intervalEnd.stripTime();
 		}

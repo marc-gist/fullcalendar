@@ -367,7 +367,7 @@ function Calendar(element, instanceOptions) {
 					unfreezeContentHeight();
 
 					// need to do this after View::render, so dates are calculated
-					updateTitle();
+					updateHeaderTitle();
 					updateTodayButton();
 
 					getAndRenderEvents();
@@ -436,7 +436,7 @@ function Calendar(element, instanceOptions) {
 			if (duration) {
 				duration = moment.duration(duration);
 				unit = computeIntervalUnit(duration);
-				unitIsSingle = computeIntervalAs(unit, duration) === 1;
+				unitIsSingle = duration.as(unit) === 1;
 			}
 
 			// options that are specified per the view's duration, like "week" or "day"
@@ -611,8 +611,7 @@ function Calendar(element, instanceOptions) {
 	-----------------------------------------------------------------------------*/
 
 
-	function updateTitle() {
-		currentView.updateTitle();
+	function updateHeaderTitle() {
 		header.updateTitle(currentView.title);
 	}
 
