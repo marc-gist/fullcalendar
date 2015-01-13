@@ -245,13 +245,6 @@ var View = fc.View = Class.extend({
 		this.render();
 		this.updateSize();
 		this.initializeScroll();
-
-        this.title = this.formatRange(
-			{ start: this.intervalStart, end: this.intervalEnd },
-			this.opt('titleFormat') || this.computeTitleFormat(),
-			this.opt('titleRangeSeparator')
-		);
-
 		this.trigger('viewRender', this, this, this.el);
 
 		// attach handlers to document. do it here to allow for destroy/rerender
