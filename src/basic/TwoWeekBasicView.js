@@ -5,35 +5,18 @@ setDefaults({
 	twoWeekNavJump: 1
 });
 
-//fcViews.twoweeks = {
-//    type: 'basic',
-//    duration: { weeks: 2 }
-//};
-
 var TwoWeeks = fcViews.twoweeks = BasicView.extend({
-    // Computes the new date when the user hits the prev button, given the current date
-	computePrevDate: function(date) {
-        var navJump = this.opt('twoWeekNavJump');
-        if ( navJump ) {
-            return date.clone().startOf('week').subtract(navJump, 'weeks');
-        } else {
-            return this.skipHiddenDays(
-                date.clone().startOf(this.intervalUnit).subtract(this.intervalDuration), -1
-            );
-        }
-	},
+    initialize: function() {
+        this.dayGrid = new DayGrid(this);
+		this.coordMap = this.dayGrid.coordMap; // the view's date-to-cell mapping is identical to the subcomponent's
 
-    // Computes the new date when the user hits the next button, given the current date
-    computeNextDate: function(date) {
+		// subclasses can implement
         var navJump = this.opt('twoWeekNavJump');
-        if ( navJump ) {
-            return date.clone().startOf('week').add(navJump, 'weeks');
-        } else {
-            return this.skipHiddenDays(
-			    date.clone().startOf(this.intervalUnit).add(this.intervalDuration)
-		    );
+        if (navJump) {
+            console.log(navJump);
+            this.intervalDuration = moment.duration({'weeks': navJump});
         }
-    }
+	}
 });
 TwoWeeks.duration = { 'weeks': 2 };
 
