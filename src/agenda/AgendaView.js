@@ -4,19 +4,19 @@
 // Is a manager for the TimeGrid subcomponent and possibly the DayGrid subcomponent (if allDaySlot is on).
 // Responsible for managing width/height.
 
-setDefaults({
+var AGENDA_DEFAULTS = {
 	allDaySlot: true,
 	allDayText: 'all-day',
 	scrollTime: '06:00:00',
 	slotDuration: '00:30:00',
 	minTime: '00:00:00',
 	maxTime: '24:00:00',
-	slotEventOverlap: true
-});
+	slotEventOverlap: true // a bad name. confused with overlap/constraint system
+};
 
 var AGENDA_ALL_DAY_EVENT_LIMIT = 5;
 
-fcViews.agenda = View.extend({ // AgendaView
+var AgendaView = fcViews.agenda = View.extend({
 
 	timeGrid: null, // the main time-grid subcomponent of this view
 	dayGrid: null, // the "all-day" subcomponent. if all-day is turned off, this will be null
@@ -72,16 +72,16 @@ fcViews.agenda = View.extend({ // AgendaView
 		this.scrollerEl = this.el.find('.fc-time-grid-container');
 		this.timeGrid.coordMap.containerEl = this.scrollerEl; // don't accept clicks/etc outside of this
 
-		this.timeGrid.el = this.el.find('.fc-time-grid');
-		this.timeGrid.render();
+		this.timeGrid.setElement(this.el.find('.fc-time-grid'));
+		this.timeGrid.renderDates();
 
 		// the <hr> that sometimes displays under the time-grid
-		this.bottomRuleEl = $('<hr class="' + this.widgetHeaderClass + '"/>')
+		this.bottomRuleEl = $('<hr class="fc-divider ' + this.widgetHeaderClass + '"/>')
 			.appendTo(this.timeGrid.el); // inject it into the time-grid
 
 		if (this.dayGrid) {
-			this.dayGrid.el = this.el.find('.fc-day-grid');
-			this.dayGrid.render();
+			this.dayGrid.setElement(this.el.find('.fc-day-grid'));
+			this.dayGrid.renderDates();
 
 			// have the day-grid extend it's coordinate area over the <hr> dividing the two grids
 			this.dayGrid.bottomCoordPadding = this.dayGrid.el.next('hr').outerHeight();
@@ -91,13 +91,25 @@ fcViews.agenda = View.extend({ // AgendaView
 	},
 
 
-	// Make subcomponents ready for cleanup
+	// Unrenders the content of the view. Since we haven't separated skeleton rendering from date rendering,
+	// always completely kill each grid's rendering.
 	destroy: function() {
-		this.timeGrid.destroy();
+		this.timeGrid.destroyDates();
+		this.timeGrid.removeElement();
+
 		if (this.dayGrid) {
-			this.dayGrid.destroy();
+			this.dayGrid.destroyDates();
+			this.dayGrid.removeElement();
 		}
-		View.prototype.destroy.call(this); // call the super-method
+	},
+
+
+	renderBusinessHours: function() {
+		this.timeGrid.renderBusinessHours();
+
+		if (this.dayGrid) {
+			this.dayGrid.renderBusinessHours();
+		}
 	},
 
 
@@ -106,19 +118,19 @@ fcViews.agenda = View.extend({ // AgendaView
 	renderHtml: function() {
 		return '' +
 			'<table>' +
-				'<thead>' +
+				'<thead class="fc-head">' +
 					'<tr>' +
 						'<td class="' + this.widgetHeaderClass + '">' +
 							this.timeGrid.headHtml() + // render the day-of-week headers
 						'</td>' +
 					'</tr>' +
 				'</thead>' +
-				'<tbody>' +
+				'<tbody class="fc-body">' +
 					'<tr>' +
 						'<td class="' + this.widgetContentClass + '">' +
 							(this.dayGrid ?
 								'<div class="fc-day-grid"/>' +
-								'<hr class="' + this.widgetHeaderClass + '"/>' :
+								'<hr class="fc-divider ' + this.widgetHeaderClass + '"/>' :
 								''
 								) +
 							'<div class="fc-time-grid-container">' +
@@ -135,21 +147,11 @@ fcViews.agenda = View.extend({ // AgendaView
 	// Queried by the TimeGrid subcomponent when generating rows. Ordering depends on isRTL.
 	headIntroHtml: function() {
 		var date;
-		var weekNumber;
-		var weekTitle;
 		var weekText;
 
 		if (this.opt('weekNumbers')) {
 			date = this.timeGrid.getCell(0).start;
-			weekNumber = this.calendar.calculateWeekNumber(date);
-			weekTitle = this.opt('weekNumberTitle');
-
-			if (this.opt('isRTL')) {
-				weekText = weekNumber + weekTitle;
-			}
-			else {
-				weekText = weekTitle + weekNumber;
-			}
+			weekText = date.format(this.opt('smallWeekFormat'));
 
 			return '' +
 				'<th class="fc-axis fc-week-number ' + this.widgetHeaderClass + '" ' + this.axisStyleAttr() + '>' +
@@ -204,10 +206,9 @@ fcViews.agenda = View.extend({ // AgendaView
 
 
 	updateSize: function(isResize) {
-		if (isResize) {
-			this.timeGrid.resize();
-		}
-		View.prototype.updateSize.call(this, isResize);
+		this.timeGrid.updateSize(isResize);
+
+		View.prototype.updateSize.call(this, isResize); // call the super-method
 	},
 
 
@@ -259,8 +260,6 @@ fcViews.agenda = View.extend({ // AgendaView
 				// and reapply the desired height to the scroller.
 				scrollerHeight = this.computeScrollerHeight(totalHeight);
 				this.scrollerEl.height(scrollerHeight);
-
-				this.restoreScroll();
 			}
 			else { // no scrollbars
 				// still, force a height and display the bottom rule (marks the end of day)
@@ -271,9 +270,8 @@ fcViews.agenda = View.extend({ // AgendaView
 	},
 
 
-	// Sets the scroll value of the scroller to the initial pre-configured state prior to allowing the user to change it
-	initializeScroll: function() {
-		var _this = this;
+	// Computes the initial pre-configured scroll state prior to allowing the user to change it
+	computeInitialScroll: function() {
 		var scrollTime = moment.duration(this.opt('scrollTime'));
 		var top = this.timeGrid.computeTimeTop(scrollTime);
 
@@ -284,12 +282,7 @@ fcViews.agenda = View.extend({ // AgendaView
 			top++; // to overcome top border that slots beyond the first have. looks better
 		}
 
-		function scroll() {
-			_this.scrollerEl.scrollTop(top);
-		}
-
-		scroll();
-		setTimeout(scroll, 0); // overrides any previous scroll state made by the browser
+		return top;
 	},
 
 
@@ -336,10 +329,6 @@ fcViews.agenda = View.extend({ // AgendaView
 
 	// Unrenders all event elements and clears internal segment data
 	destroyEvents: function() {
-
-		// if destroyEvents is being called as part of an event rerender, renderEvents will be called shortly
-		// after, so remember what the scroll value was so we can restore it.
-		this.recordScroll();
 
 		// destroy the events in the subcomponents
 		this.timeGrid.destroyEvents();
@@ -400,3 +389,5 @@ fcViews.agenda = View.extend({ // AgendaView
 	}
 
 });
+
+AgendaView.defaults = AGENDA_DEFAULTS;

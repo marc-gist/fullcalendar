@@ -20,10 +20,7 @@ var GridCoordMap = Class.extend({
 	colCoords: null, // array of {left,right} objects
 
 	containerEl: null, // container element that all coordinates are constrained to. optionally assigned
-	minX: null,
-	maxX: null, // exclusive
-	minY: null,
-	maxY: null, // exclusive
+	bounds: null,
 
 
 	constructor: function(grid) {
@@ -49,7 +46,9 @@ var GridCoordMap = Class.extend({
 	// Given a coordinate of the document, gets the associated cell. If no cell is underneath, returns null
 	getCell: function(x, y) {
 		var rowCoords = this.rowCoords;
+		var rowCnt = rowCoords.length;
 		var colCoords = this.colCoords;
+		var colCnt = colCoords.length;
 		var hitRow = null;
 		var hitCol = null;
 		var i, coords;
@@ -57,7 +56,7 @@ var GridCoordMap = Class.extend({
 
 		if (this.inBounds(x, y)) {
 
-			for (i = 0; i < rowCoords.length; i++) {
+			for (i = 0; i < rowCnt; i++) {
 				coords = rowCoords[i];
 				if (y >= coords.top && y < coords.bottom) {
 					hitRow = i;
@@ -65,7 +64,7 @@ var GridCoordMap = Class.extend({
 				}
 			}
 
-			for (i = 0; i < colCoords.length; i++) {
+			for (i = 0; i < colCnt; i++) {
 				coords = colCoords[i];
 				if (x >= coords.left && x < coords.right) {
 					hitCol = i;
@@ -74,8 +73,13 @@ var GridCoordMap = Class.extend({
 			}
 
 			if (hitRow !== null && hitCol !== null) {
-				cell = this.grid.getCell(hitRow, hitCol);
-				cell.grid = this.grid; // for DragListener's isCellsEqual. dragging between grids
+
+				cell = this.grid.getCell(hitRow, hitCol); // expected to return a fresh object we can modify
+				cell.grid = this.grid; // for CellDragListener's isCellsEqual. dragging between grids
+
+				// make the coordinates available on the cell object
+				$.extend(cell, rowCoords[hitRow], colCoords[hitCol]);
+
 				return cell;
 			}
 		}
@@ -86,23 +90,20 @@ var GridCoordMap = Class.extend({
 
 	// If there is a containerEl, compute the bounds into min/max values
 	computeBounds: function() {
-		var containerOffset;
-
-		if (this.containerEl) {
-			containerOffset = this.containerEl.offset();
-			this.minX = containerOffset.left;
-			this.maxX = containerOffset.left + this.containerEl.outerWidth();
-			this.minY = containerOffset.top;
-			this.maxY = containerOffset.top + this.containerEl.outerHeight();
-		}
+		this.bounds = this.containerEl ?
+			getClientRect(this.containerEl) : // area within scrollbars
+			null;
 	},
 
 
 	// Determines if the given coordinates are in bounds. If no `containerEl`, always true
 	inBounds: function(x, y) {
-		if (this.containerEl) {
-			return x >= this.minX && x < this.maxX && y >= this.minY && y < this.maxY;
+		var bounds = this.bounds;
+
+		if (bounds) {
+			return x >= bounds.left && x < bounds.right && y >= bounds.top && y < bounds.bottom;
 		}
+
 		return true;
 	}
 

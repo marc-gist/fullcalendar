@@ -30,14 +30,10 @@ var TimeGrid = Grid.extend({
 
 	// Renders the time grid into `this.el`, which should already be assigned.
 	// Relies on the view's colCnt. In the future, this component should probably be self-sufficient.
-	render: function() {
+	renderDates: function() {
 		this.el.html(this.renderHtml());
 		this.dayEls = this.el.find('.fc-day');
 		this.slatEls = this.el.find('.fc-slats tr');
-
-		this.computeSlatTops();
-		this.renderBusinessHours();
-		Grid.prototype.render.call(this); // call the super-method
 	},
 
 
@@ -125,6 +121,7 @@ var TimeGrid = Grid.extend({
 
 		this.slotDuration = slotDuration;
 		this.snapDuration = snapDuration;
+		this.cellDuration = snapDuration; // for Grid system
 
 		this.minTime = moment.duration(view.opt('minTime'));
 		this.maxTime = moment.duration(view.opt('maxTime'));
@@ -185,13 +182,11 @@ var TimeGrid = Grid.extend({
 	},
 
 
-	// Given a cell object, generates a range object
-	computeCellRange: function(cell) {
+	// Given a cell object, generates its start date. Returns a reference-free copy.
+	computeCellDate: function(cell) {
 		var time = this.computeSnapTime(cell.row);
-		var start = this.view.calendar.rezoneDate(cell.day).time(time);
-		var end = start.clone().add(this.snapDuration);
 
-		return { start: start, end: end };
+		return this.view.calendar.rezoneDate(cell.day).time(time);
 	},
 
 
@@ -247,10 +242,12 @@ var TimeGrid = Grid.extend({
 	------------------------------------------------------------------------------------------------------------------*/
 
 
-	// Called when there is a window resize/zoom and we need to recalculate coordinates for the grid
-	resize: function() {
+	updateSize: function(isResize) { // NOT a standard Grid method
 		this.computeSlatTops();
-		this.updateSegVerticals();
+
+		if (isResize) {
+			this.updateSegVerticals();
+		}
 	},
 
 
@@ -338,15 +335,10 @@ var TimeGrid = Grid.extend({
 	// dropLocation's end might be null, as well as `seg`. See Grid::renderDrag for more info.
 	// A returned value of `true` signals that a mock "helper" event has been rendered.
 	renderDrag: function(dropLocation, seg) {
-		var opacity;
 
 		if (seg) { // if there is event information for this drag, render a helper event
 			this.renderRangeHelper(dropLocation, seg);
-
-			opacity = this.view.opt('dragOpacity');
-			if (opacity !== undefined) {
-				this.helperEl.css('opacity', opacity);
-			}
+			this.applyDragOpacity(this.helperEl);
 
 			return true; // signal that a helper has been rendered
 		}

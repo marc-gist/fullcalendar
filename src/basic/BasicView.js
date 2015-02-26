@@ -65,15 +65,21 @@ var BasicView = fcViews.basic = View.extend({
 		this.scrollerEl = this.el.find('.fc-day-grid-container');
 		this.dayGrid.coordMap.containerEl = this.scrollerEl; // constrain clicks/etc to the dimensions of the scroller
 
-		this.dayGrid.el = this.el.find('.fc-day-grid');
-		this.dayGrid.render(this.hasRigidRows());
+		this.dayGrid.setElement(this.el.find('.fc-day-grid'));
+		this.dayGrid.renderDates(this.hasRigidRows());
 	},
 
 
-	// Make subcomponents ready for cleanup
+	// Unrenders the content of the view. Since we haven't separated skeleton rendering from date rendering,
+	// always completely kill the dayGrid's rendering.
 	destroy: function() {
-		this.dayGrid.destroy();
-		View.prototype.destroy.call(this); // call the super-method
+		this.dayGrid.destroyDates();
+		this.dayGrid.removeElement();
+	},
+
+
+	renderBusinessHours: function() {
+		this.dayGrid.renderBusinessHours();
 	},
 
 
@@ -82,14 +88,14 @@ var BasicView = fcViews.basic = View.extend({
 	renderHtml: function() {
 		return '' +
 			'<table>' +
-				'<thead>' +
+				'<thead class="fc-head">' +
 					'<tr>' +
 						'<td class="' + this.widgetHeaderClass + '">' +
 							this.dayGrid.headHtml() + // render the day-of-week headers
 						'</td>' +
 					'</tr>' +
 				'</thead>' +
-				'<tbody>' +
+				'<tbody class="fc-body">' +
 					'<tr>' +
 						'<td class="' + this.widgetContentClass + '">' +
 							'<div class="fc-day-grid-container">' +
@@ -123,7 +129,7 @@ var BasicView = fcViews.basic = View.extend({
 			return '' +
 				'<td class="fc-week-number" ' + this.weekNumberStyleAttr() + '>' +
 					'<span>' + // needed for matchCellWidths
-						this.calendar.calculateWeekNumber(this.dayGrid.getCell(row, 0).start) +
+						this.dayGrid.getCell(row, 0).start.format('w') +
 					'</span>' +
 				'</td>';
 		}
@@ -232,8 +238,6 @@ var BasicView = fcViews.basic = View.extend({
 			// doing the scrollbar compensation might have created text overflow which created more height. redo
 			scrollerHeight = this.computeScrollerHeight(totalHeight);
 			this.scrollerEl.height(scrollerHeight);
-
-			this.restoreScroll();
 		}
 	},
 
@@ -269,7 +273,6 @@ var BasicView = fcViews.basic = View.extend({
 
 	// Unrenders all event elements and clears internal segment data
 	destroyEvents: function() {
-		this.recordScroll(); // removing events will reduce height and mess with the scroll, so record beforehand
 		this.dayGrid.destroyEvents();
 
 		// we DON'T need to call updateHeight() because:

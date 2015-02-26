@@ -98,7 +98,12 @@ function makeMoment(args, parseAsUTC, parseZone) {
 				mom._ambigZone = true;
 			}
 			else if (isSingleString) {
-				mom.zone(input); // if not a valid zone, will assign UTC
+				if (mom.utcOffset) {
+					mom.utcOffset(input); // if not a valid zone, will assign UTC
+				}
+				else {
+					mom.zone(input); // for moment-pre-2.9
+				}
 			}
 		}
 	}
@@ -121,6 +126,27 @@ newMomentProto.clone = function() {
 	}
 
 	return mom;
+};
+
+
+// Week Number
+// -------------------------------------------------------------------------------------------------
+
+
+// Returns the week number, considering the locale's custom week number calcuation
+// `weeks` is an alias for `week`
+newMomentProto.week = newMomentProto.weeks = function(input) {
+	var weekCalc = (this._locale || this._lang) // works pre-moment-2.8
+		._fullCalendar_weekCalc;
+
+	if (input == null && typeof weekCalc === 'function') { // custom function only works for getter
+		return weekCalc(this);
+	}
+	else if (weekCalc === 'ISO') {
+		return oldMomentProto.isoWeek.apply(this, arguments); // ISO getter/setter
+	}
+
+	return oldMomentProto.week.apply(this, arguments); // local getter/setter
 };
 
 
@@ -419,6 +445,7 @@ function commonlyAmbiguate(inputs, preserveTime) {
 }
 
 // Transfers all the flags related to ambiguous time/zone from the `src` moment to the `dest` moment
+// TODO: look into moment.momentProperties for this.
 function transferAmbigs(src, dest) {
 	if (src._ambigTime) {
 		dest._ambigTime = true;

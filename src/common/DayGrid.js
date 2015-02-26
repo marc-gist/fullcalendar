@@ -16,10 +16,17 @@ var DayGrid = Grid.extend({
 	helperEls: null, // set of cell skeleton elements for rendering the mock event "helper"
 
 
+	constructor: function() {
+		Grid.apply(this, arguments);
+
+		this.cellDuration = moment.duration(1, 'day'); // for Grid system
+	},
+
+
 	// Renders the rows and columns into the component's `this.el`, which should already be assigned.
 	// isRigid determins whether the individual rows should ignore the contents and be a constant height.
 	// Relies on the view's colCnt and rowCnt. In the future, this component should probably be self-sufficient.
-	render: function(isRigid) {
+	renderDates: function(isRigid) {
 		var view = this.view;
 		var rowCnt = this.rowCnt;
 		var colCnt = this.colCnt;
@@ -41,14 +48,19 @@ var DayGrid = Grid.extend({
 			cell = this.getCell(i);
 			view.trigger('dayRender', null, cell.start, this.dayEls.eq(i));
 		}
-
-		Grid.prototype.render.call(this); // call the super-method
 	},
 
 
-	destroy: function() {
+	destroyDates: function() {
 		this.destroySegPopover();
-		Grid.prototype.destroy.call(this); // call the super-method
+	},
+
+
+	renderBusinessHours: function() {
+		var events = this.view.calendar.getBusinessHoursEvents(true); // wholeDay=true
+		var segs = this.eventsToSegs(events);
+
+		this.renderFill('businessHours', segs, 'bgevent');
 	},
 
 
@@ -179,14 +191,12 @@ var DayGrid = Grid.extend({
 	},
 
 
-	// Given a cell object, generates a range object
-	computeCellRange: function(cell) {
+	// Given a cell object, generates its start date. Returns a reference-free copy.
+	computeCellDate: function(cell) {
 		var colCnt = this.colCnt;
 		var index = cell.row * colCnt + (this.isRTL ? colCnt - cell.col - 1 : cell.col);
-		var start = this.cellDates[index].clone();
-		var end = start.clone().add(1, 'day');
 
-		return { start: start, end: end };
+		return this.cellDates[index].clone();
 	},
 
 
@@ -308,7 +318,6 @@ var DayGrid = Grid.extend({
 	// Renders a visual indication of an event or external element being dragged.
 	// The dropLocation's end can be null. seg can be null. See Grid::renderDrag for more info.
 	renderDrag: function(dropLocation, seg) {
-		var opacity;
 
 		// always render a highlight underneath
 		this.renderHighlight(
@@ -319,11 +328,7 @@ var DayGrid = Grid.extend({
 		if (seg && !seg.el.closest(this.el).length) {
 
 			this.renderRangeHelper(dropLocation, seg);
-
-			opacity = this.view.opt('dragOpacity');
-			if (opacity !== undefined) {
-				this.helperEls.css('opacity', opacity);
-			}
+			this.applyDragOpacity(this.helperEls);
 
 			return true; // a helper has been rendered
 		}
@@ -412,7 +417,7 @@ var DayGrid = Grid.extend({
 
 	// Renders a set of rectangles over the given segments of days.
 	// Only returns segments that successfully rendered.
-	renderFill: function(type, segs) {
+	renderFill: function(type, segs, className) {
 		var nodes = [];
 		var i, seg;
 		var skeletonEl;
@@ -421,7 +426,7 @@ var DayGrid = Grid.extend({
 
 		for (i = 0; i < segs.length; i++) {
 			seg = segs[i];
-			skeletonEl = this.renderFillRow(type, seg);
+			skeletonEl = this.renderFillRow(type, seg, className);
 			this.rowEls.eq(seg.row).append(skeletonEl);
 			nodes.push(skeletonEl[0]);
 		}
@@ -433,15 +438,17 @@ var DayGrid = Grid.extend({
 
 
 	// Generates the HTML needed for one row of a fill. Requires the seg's el to be rendered.
-	renderFillRow: function(type, seg) {
+	renderFillRow: function(type, seg, className) {
 		var colCnt = this.colCnt;
 		var startCol = seg.leftCol;
 		var endCol = seg.rightCol + 1;
 		var skeletonEl;
 		var trEl;
 
+		className = className || type.toLowerCase();
+
 		skeletonEl = $(
-			'<div class="fc-' + type.toLowerCase() + '-skeleton">' +
+			'<div class="fc-' + className + '-skeleton">' +
 				'<table><tr/></table>' +
 			'</div>'
 		);
