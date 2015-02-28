@@ -613,7 +613,7 @@ var Grid = fc.Grid = RowRenderer.extend({
 		var date = cell.start;
 
 		return '' +
-			'<th class="fc-day-header ' + view.widgetHeaderClass + ' fc-' + dayIDs[date.day()] + '">' +
+			'<th data-date="' + date.format('YYYY-MM-DD') + '" class="fc-day-header ' + view.widgetHeaderClass + ' fc-' + dayIDs[date.day()] + '">' +
 				htmlEscape(date.format(this.colHeadFormat)) +
 			'</th>';
 	},
